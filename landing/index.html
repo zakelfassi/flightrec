@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGENTSCOPE — Git blame for AI agents.</title>
+  <meta name="description" content="A Rust daemon that watches filesystems and produces LLM-readable records of what AI agents did. Git-like traceability for any agent on any system.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ─── TOKENS ─── */
+    :root {
+      --bg:       #0a0a0a;
+      --bg2:      #111111;
+      --bg3:      #181818;
+      --border:   #2a2a2a;
+      --border-hi:#ff4d00;
+      --text:     #e8e2d9;
+      --muted:    #666;
+      --accent:   #ff4d00;
+      --accent2:  #ff7a00;
+      --green:    #00ff88;
+      --r: 0;
+      --font-display: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
+      --font-mono:    'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ─── CRT OVERLAY ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 48px;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+    }
+    .nav-logo span { color: var(--text); }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-cta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-decoration: none;
+      border-radius: var(--r);
+    }
+    .nav-cta:hover { background: var(--accent2); }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+      padding-top: 48px;
+    }
+    .hero-left {
+      padding: 80px 64px 80px 64px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 4px 10px;
+      width: fit-content;
+      margin-bottom: 32px;
+    }
+    .badge::before {
+      content: '●';
+      animation: blink 1.2s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(72px, 9vw, 128px);
+      line-height: 0.9;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .hero-title em {
+      font-style: normal;
+      color: var(--accent);
+      display: block;
+    }
+    .hero-tagline {
+      font-family: var(--font-mono);
+      font-size: clamp(16px, 2vw, 22px);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      border-left: 3px solid var(--accent);
+      padding-left: 16px;
+    }
+    .hero-desc {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 480px;
+      margin-bottom: 48px;
+      line-height: 1.7;
+    }
+    .hero-ctas {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #000;
+      padding: 14px 28px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-secondary {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text);
+      padding: 13px 27px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ─── HERO RIGHT — TERMINAL ─── */
+    .hero-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 48px;
+      background: var(--bg2);
+      position: relative;
+      overflow: hidden;
+    }
+    /* grid bg */
+    .hero-right::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.4;
+    }
+    .terminal {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #0d0d0d;
+      border: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .terminal-bar {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    .terminal-bar::before {
+      content: '■ ■ ■';
+      color: var(--border);
+      font-size: 8px;
+      letter-spacing: 4px;
+    }
+    .terminal-body {
+      padding: 20px;
+      line-height: 1.8;
+    }
+    .t-prompt { color: var(--accent); }
+    .t-cmd    { color: var(--text); }
+    .t-key    { color: var(--green); }
+    .t-val    { color: #f0c060; }
+    .t-str    { color: #a0d0ff; }
+    .t-dim    { color: var(--muted); }
+    .t-sep    { color: var(--border-hi); display: block; margin: 4px 0; }
+    .t-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--accent);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+
+    /* ─── SECTION CHROME ─── */
+    section {
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-num {
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      padding: 12px 20px;
+      border-right: 1px solid var(--border);
+      min-width: 64px;
+      text-align: center;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 12px 24px;
+    }
+
+    /* ─── PROBLEM ─── */
+    #problem .inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .problem-left {
+      padding: 80px 64px;
+      border-right: 1px solid var(--border);
+    }
+    .problem-right {
+      padding: 80px 48px;
+      background: var(--bg2);
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 6vw, 80px);
+      line-height: 0.92;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .section-title em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .section-body {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.8;
+      max-width: 440px;
+    }
+    .section-body + .section-body { margin-top: 16px; }
+
+    /* stat cards */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      margin-bottom: 0;
+    }
+    .stat-card {
+      background: var(--bg2);
+      padding: 32px 28px;
+    }
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: 56px;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .stat-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    #how .steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .step {
+      padding: 64px 48px;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .step:last-child { border-right: none; }
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      margin-bottom: 24px;
+      display: block;
+    }
+    .step-icon {
+      font-size: 48px;
+      font-family: var(--font-display);
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: block;
+      line-height: 1;
+    }
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 48px;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 16px;
+      line-height: 1;
+    }
+    .step-body {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .step-code {
+      margin-top: 20px;
+      background: var(--bg3);
+      border-left: 2px solid var(--accent);
+      padding: 12px 16px;
+      font-size: 11px;
+      color: var(--green);
+      line-height: 1.6;
+    }
+    /* connector arrow */
+    .step:not(:last-child)::after {
+      content: '→';
+      position: absolute;
+      right: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-display);
+      font-size: 32px;
+      color: var(--accent);
+      z-index: 1;
+    }
+
+    /* ─── USE CASES ─── */
+    #usecases .cases {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .case {
+      padding: 56px 48px;
+      border-right: 1px solid var(--border);
+    }
+    .case:last-child { border-right: none; }
+    .case-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: block;
+    }
+    .case-title {
+      font-family: var(--font-display);
+      font-size: 36px;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .case-body {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .case-example {
+      background: var(--bg3);
+      border-left: 2px solid var(--border);
+      padding: 12px 16px;
+      font-size: 11px;
+      color: var(--green);
+      line-height: 1.6;
+    }
+    .case-example .hl { color: var(--accent); }
+
+    /* ─── CTA STRIP ─── */
+    #cta {
+      background: var(--accent);
+      border-bottom: none;
+    }
+    #cta .inner {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 64px;
+      gap: 48px;
+    }
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 5vw, 72px);
+      color: #000;
+      line-height: 0.95;
+      letter-spacing: 0.02em;
+    }
+    .cta-sub {
+      font-size: 13px;
+      color: rgba(0,0,0,0.65);
+      margin-top: 12px;
+    }
+    .cta-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 200px;
+    }
+    .btn-dark {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: #000;
+      color: var(--accent);
+      padding: 14px 24px;
+      text-decoration: none;
+      text-align: center;
+      border: none;
+    }
+    .btn-dark:hover { background: #111; }
+    .btn-outline-dark {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: transparent;
+      color: #000;
+      padding: 13px 23px;
+      text-decoration: none;
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.4);
+    }
+    .btn-outline-dark:hover { border-color: #000; background: rgba(0,0,0,0.08); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 64px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+    .footer-meta {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .footer-links a:hover { color: var(--accent); }
+
+    /* ─── PAGE LOAD STAGGER ─── */
+    .hero-left > * {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .hero-left > *:nth-child(1) { animation-delay: 0.05s; }
+    .hero-left > *:nth-child(2) { animation-delay: 0.15s; }
+    .hero-left > *:nth-child(3) { animation-delay: 0.25s; }
+    .hero-left > *:nth-child(4) { animation-delay: 0.35s; }
+    .hero-left > *:nth-child(5) { animation-delay: 0.45s; }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: none; }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      .hero, #problem .inner, #how .steps, #usecases .cases {
+        grid-template-columns: 1fr;
+      }
+      .hero-left { padding: 80px 24px 48px; border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-right { padding: 48px 24px; }
+      .problem-left { padding: 48px 24px; border-right: none; border-bottom: 1px solid var(--border); }
+      .problem-right { padding: 48px 24px; }
+      .step { border-right: none; border-bottom: 1px solid var(--border); padding: 48px 24px; }
+      .step:not(:last-child)::after { display: none; }
+      .case { border-right: none; border-bottom: 1px solid var(--border); padding: 48px 24px; }
+      #cta .inner { grid-template-columns: 1fr; padding: 48px 24px; }
+      footer { padding: 24px; flex-direction: column; gap: 16px; text-align: center; }
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <span class="nav-logo">AGENT<span>SCOPE</span></span>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#usecases">Use cases</a></li>
+      <li><a href="#docs">Docs</a></li>
+    </ul>
+    <a href="https://github.com/zakelfassi/agentscope" class="nav-cta">★ Star on GitHub</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="badge">ALPHA · Rust daemon · v0.1.0</div>
+      <h1 class="hero-title">
+        AGENT<br>
+        <em>SCOPE</em>
+      </h1>
+      <p class="hero-tagline">Git blame for AI agents.</p>
+      <p class="hero-desc">
+        A Rust daemon that watches your filesystem and produces LLM-readable records
+        of everything an AI agent touched. Full traceability. Any agent. Any system.
+        No changes to your agent required.
+      </p>
+      <div class="hero-ctas">
+        <a href="https://github.com/zakelfassi/agentscope" class="btn-primary">★ Star on GitHub</a>
+        <a href="#docs" class="btn-secondary">Read the Spec →</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="terminal">
+        <div class="terminal-bar">agentscope — scope watch ./</div>
+        <div class="terminal-body">
+          <div><span class="t-prompt">$</span> <span class="t-cmd">scope watch ./ --agent=ralph-loop</span></div>
+          <br>
+          <div><span class="t-key">WATCHING</span>  <span class="t-val">./</span>   <span class="t-dim">[inotify]</span></div>
+          <br>
+          <span class="t-sep">━━━━ EVENT STREAM ━━━━━━━━━━━━━━━━━━━━━━━━</span>
+          <div><span class="t-dim">00:01.231</span>  <span class="t-key">CREATE</span>  <span class="t-str">src/agents/planner.rs</span></div>
+          <div><span class="t-dim">00:01.458</span>  <span class="t-key">MODIFY</span>  <span class="t-str">Cargo.toml</span>  <span class="t-dim">+3 -0</span></div>
+          <div><span class="t-dim">00:01.891</span>  <span class="t-key">MODIFY</span>  <span class="t-str">src/main.rs</span>  <span class="t-dim">+47 -12</span></div>
+          <div><span class="t-dim">00:02.012</span>  <span class="t-key">DELETE</span>  <span class="t-str">src/legacy/v1.rs</span></div>
+          <div><span class="t-dim">00:02.440</span>  <span class="t-key">EXEC</span>    <span class="t-str">cargo build --release</span></div>
+          <span class="t-sep">━━━━ NARRATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+          <div><span class="t-dim">Agent created planner module, added</span></div>
+          <div><span class="t-dim">tokio dependency, rewrote 47 lines in</span></div>
+          <div><span class="t-dim">main.rs, deleted legacy code, triggered</span></div>
+          <div><span class="t-dim">a release build. Net: +38 lines changed.</span></div>
+          <br>
+          <div><span class="t-prompt">$</span> <span class="t-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section id="problem">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-label">The Problem — Agents Are Blind Spots</span>
+    </div>
+    <div class="inner">
+      <div class="problem-left">
+        <h2 class="section-title">YOU DEPLOYED<br>AN AGENT.<br>DO YOU KNOW<br>WHAT IT<br><em>CHANGED?</em></h2>
+        <p class="section-body">
+          You give an agent access to your filesystem, your config, your codebase.
+          It runs. It does things. Then it reports back — in natural language, optimistically,
+          from its own perspective.
+        </p>
+        <p class="section-body" style="margin-top:16px">
+          That's not observability. That's a vibes check.
+        </p>
+        <p class="section-body" style="margin-top:16px">
+          Agentscope sits outside the agent. It watches what actually happened —
+          at the filesystem layer, ground truth — and builds a timestamped,
+          diffable, queryable record. Like git, but for runtime behavior.
+        </p>
+      </div>
+      <div class="problem-right">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-number">0</div>
+            <div class="stat-label">Agent logs you can trust</div>
+            <div class="stat-desc">Agents narrate their intent. Not their actions. There's a difference.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">∞</div>
+            <div class="stat-label">Surface area per run</div>
+            <div class="stat-desc">Every file, every exec, every config touch. All of it matters.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">3×</div>
+            <div class="stat-label">Faster incident debug</div>
+            <div class="stat-desc">When you have a real diff, not a hallucinated recap.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">1</div>
+            <div class="stat-label">Source of truth</div>
+            <div class="stat-desc">The filesystem doesn't lie. Agentscope reads it, not the agent.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-label">How It Works — Watch → Diff → Narrate</span>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">STEP 01</span>
+        <span class="step-icon">👁</span>
+        <div class="step-title">WATCH</div>
+        <p class="step-body">
+          Drop the daemon next to your agent. Point it at a directory.
+          Agentscope subscribes to OS-level filesystem events via inotify (Linux)
+          or FSEvents (macOS). Zero instrumentation needed on the agent side.
+        </p>
+        <div class="step-code">$ scope watch ./workspace \<br>&nbsp;&nbsp;--agent=my-agent \<br>&nbsp;&nbsp;--session=abc123</div>
+      </div>
+      <div class="step">
+        <span class="step-num">STEP 02</span>
+        <span class="step-icon">Δ</span>
+        <div class="step-title">DIFF</div>
+        <p class="step-body">
+          Every event is captured: creates, modifies, deletes, permission changes,
+          exec calls. Files are checksummed. Diffs are computed and stored in a
+          structured event log — timestamped to microsecond precision.
+        </p>
+        <div class="step-code">event: MODIFY<br>path: src/config.rs<br>diff: +12 -3<br>hash: a3f9c2d…</div>
+      </div>
+      <div class="step">
+        <span class="step-num">STEP 03</span>
+        <span class="step-icon">◎</span>
+        <div class="step-title">NARRATE</div>
+        <p class="step-body">
+          Query the session log in natural language. Feed it to an LLM for
+          incident review. Export as JSON, Markdown, or structured diff.
+          The record is LLM-optimized: dense, factual, token-efficient.
+        </p>
+        <div class="step-code">$ scope narrate abc123<br>&gt; Agent modified 4 files,<br>&gt; deleted 1, ran 2 builds.<br>&gt; Net delta: +89 -34 lines.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USE CASES -->
+  <section id="usecases">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-label">Use Cases — Where Agentscope Runs</span>
+    </div>
+    <div class="cases">
+      <div class="case">
+        <span class="case-tag">Agentic Ops</span>
+        <div class="case-title">OPENCLAW CONFIGS</div>
+        <p class="case-body">
+          OpenClaw agents touch SOUL.md, TOOLS.md, skills, cron definitions.
+          Know exactly which agent session modified which config, when, and what changed.
+          Full audit trail for your agent fleet.
+        </p>
+        <div class="case-example">
+          <span class="hl">session:</span> noth/morning-cron<br>
+          <span class="hl">touched:</span> skills/agent-sync/SKILL.md<br>
+          <span class="hl">delta:</span> +2 lines, section "Ops invariants"
+        </div>
+      </div>
+      <div class="case">
+        <span class="case-tag">Code Agents</span>
+        <div class="case-title">RALPH LOOP</div>
+        <p class="case-body">
+          The Ralph Loop runs Codex + Claude in a build-review cycle.
+          Agentscope records every file the loop created, modified, or deleted —
+          separate from the git commit. The diff before the diff.
+        </p>
+        <div class="case-example">
+          <span class="hl">agent:</span> codex/gpt-5.2-codex<br>
+          <span class="hl">run:</span> loop-iteration-47<br>
+          <span class="hl">files:</span> 8 modified, 2 created<br>
+          <span class="hl">exec:</span> cargo test (exit 0)
+        </div>
+      </div>
+      <div class="case">
+        <span class="case-tag">Robotics / Embedded</span>
+        <div class="case-title">ANY AGENT,<br>ANY SYSTEM</div>
+        <p class="case-body">
+          Robots write configs. Autonomous pipelines touch ML model checkpoints.
+          IoT agents update firmware staging directories. Agentscope works anywhere
+          a filesystem exists. No agent SDK. No cloud dependency.
+        </p>
+        <div class="case-example">
+          <span class="hl">target:</span> /opt/robot/config/<br>
+          <span class="hl">event:</span> MODIFY calibration.yaml<br>
+          <span class="hl">actor:</span> nav-agent-v3<br>
+          <span class="hl">hash:</span> b2a91f… → d04c33…
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOCS ANCHOR -->
+  <section id="docs" style="padding: 0;">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-label">Documentation Structure</span>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr);">
+      <div style="padding: 40px 36px; border-right: 1px solid var(--border);">
+        <div style="font-family: var(--font-display); font-size: 13px; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 12px;">GETTING STARTED</div>
+        <ul style="list-style: none; font-size: 12px; color: var(--muted); line-height: 2.2;">
+          <li>→ Installation</li>
+          <li>→ Quick start (5 min)</li>
+          <li>→ Your first session</li>
+          <li>→ Configuration reference</li>
+        </ul>
+      </div>
+      <div style="padding: 40px 36px; border-right: 1px solid var(--border);">
+        <div style="font-family: var(--font-display); font-size: 13px; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 12px;">CORE CONCEPTS</div>
+        <ul style="list-style: none; font-size: 12px; color: var(--muted); line-height: 2.2;">
+          <li>→ Sessions & scopes</li>
+          <li>→ Event taxonomy</li>
+          <li>→ Diff engine</li>
+          <li>→ Narration format</li>
+        </ul>
+      </div>
+      <div style="padding: 40px 36px; border-right: 1px solid var(--border);">
+        <div style="font-family: var(--font-display); font-size: 13px; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 12px;">INTEGRATIONS</div>
+        <ul style="list-style: none; font-size: 12px; color: var(--muted); line-height: 2.2;">
+          <li>→ OpenClaw</li>
+          <li>→ Claude / Codex agents</li>
+          <li>→ Forgeloop / Ralph</li>
+          <li>→ Custom exporters</li>
+        </ul>
+      </div>
+      <div style="padding: 40px 36px;">
+        <div style="font-family: var(--font-display); font-size: 13px; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 12px;">REFERENCE</div>
+        <ul style="list-style: none; font-size: 12px; color: var(--muted); line-height: 2.2;">
+          <li>→ CLI reference</li>
+          <li>→ Output schema (JSON)</li>
+          <li>→ LLM prompt templates</li>
+          <li>→ Architecture spec</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="inner">
+      <div>
+        <div class="cta-title">KNOW WHAT<br>YOUR AGENT<br>ACTUALLY DID.</div>
+        <p class="cta-sub">Open source. MIT licensed. Written in Rust. No cloud required.</p>
+      </div>
+      <div class="cta-buttons">
+        <a href="https://github.com/zakelfassi/agentscope" class="btn-dark">★ Star on GitHub</a>
+        <a href="#docs" class="btn-outline-dark">Read the Spec</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-logo">AGENTSCOPE</span>
+    <ul class="footer-links">
+      <li><a href="https://github.com/zakelfassi/agentscope">GitHub</a></li>
+      <li><a href="#docs">Docs</a></li>
+      <li><a href="https://zakelfassi.com">zakelfassi.com</a></li>
+    </ul>
+    <span class="footer-meta">MIT LICENSE · BUILT WITH RUST · 2026</span>
+  </footer>
+
+</body>
+</html>
