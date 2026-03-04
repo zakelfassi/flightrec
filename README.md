@@ -25,3 +25,16 @@ AI agents act fast and edit lots of files, but there’s no trustworthy, structu
 
 ## Status
 Spec complete. Implementation in progress.
+
+## Development (Skills)
+
+This project uses [Skills-Driven Development](https://github.com/zakelfassi/skills-driven-development).
+All development workflows are defined as executable skills in `skills/`.
+
+- **Build & Test**: `skills/operational/agentscope-build/run.sh`
+- **Meta**: `skills/meta/skillforge/` (for creating new skills)
+
+To run the full build pipeline:
+```bash
+./skills/operational/agentscope-build/run.sh
+```

@@ -100,7 +100,11 @@ fn main() -> Result<()> {
             }
         }
 
-        Commands::Diff { snap_a, snap_b, json } => {
+        Commands::Diff {
+            snap_a,
+            snap_b,
+            json,
+        } => {
             let old = storage::load_snapshot(&snap_a)?;
             let new = storage::load_snapshot(&snap_b)?;
             let event = diff::compute_diff(&old, &new);

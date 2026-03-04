@@ -66,9 +66,7 @@ pub fn compute_diff(old: &SnapshotManifest, new: &SnapshotManifest) -> DiffEvent
                     old_hash: Some(old_entry.blob_hash.clone()),
                     new_hash: Some(old_entry.blob_hash.clone()),
                     old_size: Some(old_entry.size),
-                    new_size: new_map
-                        .get(new_path)
-                        .map(|e| e.size),
+                    new_size: new_map.get(new_path).map(|e| e.size),
                     diff_text: None,
                     renamed_from: Some(path.to_string()),
                 });
