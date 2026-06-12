@@ -27,8 +27,9 @@ Expected output:
 [2026-06-12T09:15:30.456+00:00] snapshot 20260612T091530-456 — 12 files → ~/.flightrec/snapshots/20260612T091530-456.json
   1 changes:
     ~ ~/projects/my-app/src/main.rs
-  [llm] summary generated (ollama/llama3.2)
 ```
+
+The watch command does not print a confirmation line when a summary is generated. On success, the `summary` field is written into the saved diff JSON. On failure, a warning is printed to stderr (`warning: LLM summarization failed …`). Use `flightrec report <diff-id>` to retrieve the narrative.
 
 ## Change the model
 

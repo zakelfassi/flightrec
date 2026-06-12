@@ -175,7 +175,7 @@ max_changes_per_prompt = 20
 **Type**: `String` (path)
 **Default**: `"~/.flightrec/logs"`
 
-Directory where structured JSON log files are written. `~` is expanded at runtime.
+**Reserved — not yet wired.** This field is parsed and stored but is not currently used by the storage layer. Setting it has no effect in v0.2. It is reserved for a future structured JSON log output feature.
 
 ```toml
 [output]

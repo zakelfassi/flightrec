@@ -24,8 +24,9 @@ Expected output:
   2 changes:
     ~ ~/projects/my-app/README.md
     + ~/projects/my-app/CHANGELOG.md
-  [llm] summary generated (anthropic/claude-haiku-4-5)
 ```
+
+The watch command does not print a confirmation line when a summary is generated. On success, the `summary` field is written into the saved diff JSON. On failure, a warning is printed to stderr (`warning: LLM summarization failed …`). Use `flightrec report <diff-id>` to retrieve the narrative.
 
 ## View a narrative
 

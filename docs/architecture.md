@@ -235,8 +235,8 @@ Navigation keys: `j`/`k` or `↑`/`↓` (move), `Enter` (drill in), `Esc` or `Ba
 |---|---|
 | `flightrec init` | Write starter `config.toml` in `$FLIGHTREC_HOME`. Flags: `--force`, `--root <path>` |
 | `flightrec watch` | Run daemon loop (polling). Flags: `--once`, `--interval <secs>`, `--no-llm` |
-| `flightrec diff <a> <b>` | Display diff between two snapshot IDs. Flags: `--json`, `--summary` |
-| `flightrec replay` | Print diff history chronologically. Flags: `--since`, `--until`, `--path` |
+| `flightrec diff <a> <b>` | Display diff between two snapshot IDs. Flags: `--json` |
+| `flightrec replay` | Print diff history chronologically. Flags: `--since`, `--path` |
 | `flightrec report <id>` | Render LLM narrative for a diff. Flags: `--format md\|json` |
 | `flightrec tui` | Open interactive TUI (also the default no-arg invocation) |
 
