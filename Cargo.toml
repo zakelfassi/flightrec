@@ -1,5 +1,5 @@
 [package]
-name = "agentscope"
+name = "flightrec"
 version = "0.2.0"
 edition = "2021"
 description = "Git-like filesystem observability for AI agents"
@@ -16,7 +16,7 @@ name = "agentscope"
 path = "src/lib.rs"
 
 [[bin]]
-name = "scope"
+name = "flightrec"
 path = "src/main.rs"
 
 [dependencies]

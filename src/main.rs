@@ -3,9 +3,9 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "scope")]
+#[command(name = "flightrec")]
 #[command(about = "Git-like filesystem observability for AI agents")]
-#[command(version = "0.1.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

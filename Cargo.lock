@@ -3,24 +3,6 @@
 version = 4
 
 [[package]]
-name = "agentscope"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "dirs",
- "globset",
- "hex",
- "serde",
- "serde_json",
- "sha2",
- "similar",
- "toml",
- "walkdir",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -268,6 +250,24 @@ name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
+
+[[package]]
+name = "flightrec"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "dirs",
+ "globset",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "similar",
+ "toml",
+ "walkdir",
+]
 
 [[package]]
 name = "generic-array"
