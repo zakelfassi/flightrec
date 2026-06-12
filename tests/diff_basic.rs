@@ -1,5 +1,5 @@
-use agentscope::diff::{compute_diff, ChangeType};
-use agentscope::snapshot::{FileEntry, SnapshotManifest};
+use flightrec::diff::{compute_diff, ChangeType};
+use flightrec::snapshot::{FileEntry, SnapshotManifest};
 
 fn snap(id: &str, files: Vec<(&str, &str, u64)>) -> SnapshotManifest {
     SnapshotManifest {

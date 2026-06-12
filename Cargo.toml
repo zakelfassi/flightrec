@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "development-tools", "filesystem"]
 exclude = ["landing/", "skills/", "assets/", "tests/fixtures/", ".github/"]
 
 [lib]
-name = "agentscope"
+name = "flightrec"
 path = "src/lib.rs"
 
 [[bin]]

@@ -1,4 +1,4 @@
-use agentscope::{config, diff, snapshot, storage};
+use flightrec::{config, diff, snapshot, storage};
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
