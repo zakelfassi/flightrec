@@ -26,7 +26,8 @@ pub fn run(once: bool, interval: Option<u64>, cfg: &Config) -> Result<()> {
         let all = storage::list_snapshots()?;
         if all.len() >= 2 {
             let prev = storage::load_snapshot(&all[all.len() - 2])?;
-            let event = diff::compute_diff(&prev, &snap);
+            let mut event = diff::compute_diff(&prev, &snap);
+            diff::enrich_with_diffs(&mut event, &blob_store);
             if !event.changes.is_empty() {
                 storage::save_diff(&event)?;
                 println!("  {} changes:", event.changes.len());
