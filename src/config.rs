@@ -44,11 +44,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             watch: WatchConfig {
-                roots: vec![
-                    "~/.openclaw".to_string(),
-                    "~/clawd".to_string(),
-                    "~/tac-monorepo".to_string(),
-                ],
+                roots: vec![".".to_string()],
             },
             filter: FilterConfig {
                 include: vec![
@@ -84,19 +80,30 @@ impl Default for Config {
                 model: "claude-haiku-4-5".to_string(),
             },
             output: OutputConfig {
-                json_log_dir: "~/.agentscope/logs".to_string(),
+                json_log_dir: "~/.flightrec/logs".to_string(),
             },
         }
     }
 }
 
 pub fn load_config() -> Result<Config> {
-    let config_path = expand_tilde("~/.agentscope/config.toml");
-    if config_path.exists() {
+    let config_path = expand_tilde("~/.flightrec/config.toml");
+    let mut config = if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
-        let config: Config = toml::from_str(&content)?;
-        Ok(config)
+        toml::from_str(&content)?
     } else {
-        Ok(Config::default())
-    }
+        Config::default()
+    };
+    config.watch.roots = config
+        .watch
+        .roots
+        .into_iter()
+        .map(|r| {
+            let expanded = expand_tilde(&r);
+            std::fs::canonicalize(&expanded)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| expanded.to_string_lossy().into_owned())
+        })
+        .collect();
+    Ok(config)
 }

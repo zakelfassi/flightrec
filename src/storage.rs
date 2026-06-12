@@ -14,7 +14,7 @@ pub struct StoragePaths {
 
 impl StoragePaths {
     pub fn new() -> Self {
-        let base = expand_tilde("~/.agentscope");
+        let base = expand_tilde("~/.flightrec");
         StoragePaths {
             snapshots: base.join("snapshots"),
             diffs: base.join("diffs"),
