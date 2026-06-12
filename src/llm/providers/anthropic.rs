@@ -1,0 +1,64 @@
+use reqwest::blocking::Client;
+use serde_json::json;
+
+use crate::llm::{LlmError, LlmProvider};
+
+const DEFAULT_URL: &str = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION: &str = "2023-06-01";
+
+pub struct AnthropicProvider {
+    client: Client,
+    api_key: String,
+}
+
+impl AnthropicProvider {
+    pub fn new(api_key_env: &str) -> Result<Self, LlmError> {
+        let api_key = std::env::var(api_key_env).map_err(|_| LlmError::MissingApiKey {
+            env_var: api_key_env.to_string(),
+        })?;
+        Ok(Self {
+            client: Client::new(),
+            api_key,
+        })
+    }
+}
+
+impl LlmProvider for AnthropicProvider {
+    fn name(&self) -> &str {
+        "anthropic"
+    }
+
+    fn complete(&self, model: &str, system: &str, user: &str) -> Result<String, LlmError> {
+        let body = json!({
+            "model": model,
+            "max_tokens": 1024,
+            "system": system,
+            "messages": [{"role": "user", "content": user}]
+        });
+
+        let resp = self
+            .client
+            .post(DEFAULT_URL)
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .header("content-type", "application/json")
+            .json(&body)
+            .send()
+            .map_err(LlmError::Http)?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body_text = resp.text().unwrap_or_default();
+            return Err(LlmError::Api {
+                status: status.as_u16(),
+                body: body_text,
+            });
+        }
+
+        let json: serde_json::Value = resp.json().map_err(LlmError::Http)?;
+        let text = json["content"][0]["text"]
+            .as_str()
+            .ok_or_else(|| LlmError::BadOutput("missing content[0].text".to_string()))?;
+        Ok(text.to_string())
+    }
+}

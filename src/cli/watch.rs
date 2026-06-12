@@ -1,8 +1,8 @@
 use anyhow::Result;
 
-use crate::{blobstore::BlobStore, config::Config, diff, snapshot, storage};
+use crate::{blobstore::BlobStore, config::Config, diff, llm, snapshot, storage};
 
-pub fn run(once: bool, interval: Option<u64>, cfg: &Config) -> Result<()> {
+pub fn run(once: bool, interval: Option<u64>, no_llm: bool, cfg: &Config) -> Result<()> {
     let secs = interval.unwrap_or(cfg.daemon.interval_seconds);
     let paths = storage::StoragePaths::new();
     let blob_store = BlobStore::new(&paths.objects);
@@ -39,6 +39,23 @@ pub fn run(once: bool, interval: Option<u64>, cfg: &Config) -> Result<()> {
                         diff::ChangeType::Renamed => "→",
                     };
                     println!("    {} {}", sym, c.path);
+                }
+
+                // LLM summarization — failure is non-fatal (warn + continue).
+                if cfg.llm.enabled && !no_llm {
+                    match llm::summarize_diff(&event, &cfg.llm) {
+                        Ok(summary) => {
+                            event.summary = Some(summary);
+                            if let Err(e) = storage::save_diff(&event) {
+                                eprintln!("warning: could not re-save diff with summary: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "warning: LLM summarization failed (diff persisted without summary): {e}"
+                            );
+                        }
+                    }
                 }
             } else {
                 println!("  no changes.");

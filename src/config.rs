@@ -19,11 +19,21 @@ pub struct DaemonConfig {
     pub interval_seconds: u64,
 }
 
+fn default_max_changes() -> usize {
+    30
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LlmConfig {
     pub enabled: bool,
     pub provider: String,
     pub model: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    #[serde(default = "default_max_changes")]
+    pub max_changes_per_prompt: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -78,6 +88,9 @@ impl Default for Config {
                 enabled: false,
                 provider: "anthropic".to_string(),
                 model: "claude-haiku-4-5".to_string(),
+                base_url: None,
+                api_key_env: None,
+                max_changes_per_prompt: 30,
             },
             output: OutputConfig {
                 json_log_dir: "~/.flightrec/logs".to_string(),

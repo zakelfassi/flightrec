@@ -29,6 +29,9 @@ enum Commands {
         /// Override poll interval in seconds
         #[arg(long)]
         interval: Option<u64>,
+        /// Disable LLM summarization even if enabled in config
+        #[arg(long)]
+        no_llm: bool,
     },
     /// Compute and display the diff between two snapshots
     Diff {
@@ -74,7 +77,11 @@ pub fn run() -> Result<()> {
             let cfg = config::load_config()?;
             storage::init_storage()?;
             match cmd {
-                Commands::Watch { once, interval } => watch::run(once, interval, &cfg)?,
+                Commands::Watch {
+                    once,
+                    interval,
+                    no_llm,
+                } => watch::run(once, interval, no_llm, &cfg)?,
                 Commands::Diff {
                     snap_a,
                     snap_b,

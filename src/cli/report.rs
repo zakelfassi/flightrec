@@ -28,6 +28,22 @@ pub fn run(diff_id: String, format: String) -> Result<()> {
                 }
                 println!();
             }
+            if let Some(ref summary) = event.summary {
+                println!(
+                    "\n## LLM Summary ({}  {}  {})",
+                    summary.llm_provider, summary.model, summary.generated_at
+                );
+                println!("\n{}\n", summary.short);
+                if !summary.actions.is_empty() {
+                    println!("**Actions:**");
+                    for action in &summary.actions {
+                        println!("- {}", action);
+                    }
+                }
+                if let Some(ref intent) = summary.intent_guess {
+                    println!("\n**Intent:** {}", intent);
+                }
+            }
         }
     }
     Ok(())

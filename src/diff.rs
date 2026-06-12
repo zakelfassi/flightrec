@@ -26,6 +26,17 @@ pub struct ChangeRecord {
     pub renamed_from: Option<String>,
 }
 
+/// Narrative summary produced by an LLM provider.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DiffSummary {
+    pub llm_provider: String,
+    pub model: String,
+    pub generated_at: String,
+    pub short: String,
+    pub actions: Vec<String>,
+    pub intent_guess: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DiffEvent {
     pub diff_id: String,
@@ -33,6 +44,8 @@ pub struct DiffEvent {
     pub to_snapshot_id: String,
     pub created_at: String,
     pub changes: Vec<ChangeRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<DiffSummary>,
 }
 
 pub fn compute_diff(old: &SnapshotManifest, new: &SnapshotManifest) -> DiffEvent {
@@ -138,6 +151,7 @@ pub fn compute_diff(old: &SnapshotManifest, new: &SnapshotManifest) -> DiffEvent
         to_snapshot_id: new.snapshot_id.clone(),
         created_at: now_iso(),
         changes,
+        summary: None,
     }
 }
 
