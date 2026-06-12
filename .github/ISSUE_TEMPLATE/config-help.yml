@@ -1,0 +1,56 @@
+name: Config / setup help
+description: Trouble getting flightrec configured or running.
+title: "[help] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, check the [README](https://github.com/zakelfassi/flightrec#readme)
+        and run `flightrec init` to generate a starter config.
+
+  - type: input
+    id: version
+    attributes:
+      label: flightrec version
+      description: Output of `flightrec --version`
+      placeholder: "flightrec 0.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux x86_64
+        - Linux aarch64
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Config (config.toml)
+      description: Paste your `$FLIGHTREC_HOME/config.toml`. Redact any API keys.
+      render: toml
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is not working?
+      description: Describe the problem and what you have already tried.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Command output
+      description: Paste the exact command you ran and its full output (`RUST_LOG=debug` helps).
+      render: shell
