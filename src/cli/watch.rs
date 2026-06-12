@@ -1,11 +1,32 @@
+use std::io::IsTerminal;
+
 use anyhow::Result;
 
 use crate::{blobstore::BlobStore, config::Config, diff, llm, snapshot, storage};
+
+/// Returns whether ANSI color output should be used for stdout.
+/// Respects `NO_COLOR` env var and non-tty detection.
+fn use_color() -> bool {
+    if std::env::var_os("NO_COLOR").is_some() {
+        return false;
+    }
+    std::io::stdout().is_terminal()
+}
+
+/// Wraps `text` in the given ANSI color sequence when `colored` is true.
+fn colorize(text: &str, ansi_code: &str, colored: bool) -> String {
+    if colored {
+        format!("\x1b[{ansi_code}m{text}\x1b[0m")
+    } else {
+        text.to_string()
+    }
+}
 
 pub fn run(once: bool, interval: Option<u64>, no_llm: bool, cfg: &Config) -> Result<()> {
     let secs = interval.unwrap_or(cfg.daemon.interval_seconds);
     let paths = storage::StoragePaths::new();
     let blob_store = BlobStore::new(&paths.objects);
+    let colored = use_color();
     loop {
         let snap = snapshot::take_snapshot(
             &cfg.watch.roots,
@@ -32,13 +53,15 @@ pub fn run(once: bool, interval: Option<u64>, no_llm: bool, cfg: &Config) -> Res
                 storage::save_diff(&event)?;
                 println!("  {} changes:", event.changes.len());
                 for c in &event.changes {
-                    let sym = match c.change_type {
-                        diff::ChangeType::Added => "+",
-                        diff::ChangeType::Removed => "-",
-                        diff::ChangeType::Modified => "~",
-                        diff::ChangeType::Renamed => "→",
+                    // Signal colors: added=green(32), removed=red(31),
+                    // modified=yellow/amber(33), renamed=dim(2).
+                    let (sym, ansi) = match c.change_type {
+                        diff::ChangeType::Added => ("+", "32"),
+                        diff::ChangeType::Removed => ("-", "31"),
+                        diff::ChangeType::Modified => ("~", "33"),
+                        diff::ChangeType::Renamed => ("→", "2"),
                     };
-                    println!("    {} {}", sym, c.path);
+                    println!("    {} {}", colorize(sym, ansi, colored), c.path);
                 }
 
                 // LLM summarization — failure is non-fatal (warn + continue).
