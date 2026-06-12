@@ -1,12 +1,18 @@
 use anyhow::Result;
 
-use crate::{config::Config, diff, snapshot, storage};
+use crate::{blobstore::BlobStore, config::Config, diff, snapshot, storage};
 
 pub fn run(once: bool, interval: Option<u64>, cfg: &Config) -> Result<()> {
     let secs = interval.unwrap_or(cfg.daemon.interval_seconds);
+    let paths = storage::StoragePaths::new();
+    let blob_store = BlobStore::new(&paths.objects);
     loop {
-        let snap =
-            snapshot::take_snapshot(&cfg.watch.roots, &cfg.filter.include, &cfg.filter.exclude)?;
+        let snap = snapshot::take_snapshot(
+            &cfg.watch.roots,
+            &cfg.filter.include,
+            &cfg.filter.exclude,
+            Some(&blob_store),
+        )?;
         let count = snap.files.len();
         let saved = storage::save_snapshot(&snap)?;
         println!(

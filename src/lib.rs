@@ -1,3 +1,4 @@
+pub mod blobstore;
 pub mod cli;
 pub mod config;
 pub mod diff;
