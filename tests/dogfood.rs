@@ -33,10 +33,10 @@ fn dogfood_watch_once_detects_modification() {
     let watched_file = tree.path().join("notes.txt");
     std::fs::write(&watched_file, "initial content\n").unwrap();
 
-    // Configure flightrec to watch the temp tree.
+    // Configure flightrec to watch the temp tree by running init from its CWD.
     flightrec(&home)
-        .args(["init", "--root"])
-        .arg(tree.path())
+        .current_dir(tree.path())
+        .arg("init")
         .assert()
         .success();
 
@@ -78,6 +78,11 @@ fn dogfood_watch_once_detects_modification() {
     let changes = event["changes"]
         .as_array()
         .expect("changes must be an array");
+    assert_eq!(
+        changes.len(),
+        1,
+        "expected exactly one change; got: {changes:#?}"
+    );
     let modified: Vec<_> = changes
         .iter()
         .filter(|c| c["change_type"] == "modified")

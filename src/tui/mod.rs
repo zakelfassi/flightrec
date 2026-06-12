@@ -24,6 +24,18 @@ impl Drop for RawModeGuard {
     }
 }
 
+/// RAII guard that calls LeaveAlternateScreen on drop.
+/// Created immediately after EnterAlternateScreen succeeds so that any
+/// subsequent setup failure (e.g. Terminal::new) leaves the alternate screen
+/// rather than leaving the terminal stuck there.
+struct AltScreenGuard;
+
+impl Drop for AltScreenGuard {
+    fn drop(&mut self) {
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+    }
+}
+
 /// RAII guard that restores the terminal on drop (including panics).
 struct TerminalGuard {
     terminal: Terminal<CrosstermBackend<Stdout>>,
@@ -32,14 +44,18 @@ struct TerminalGuard {
 impl TerminalGuard {
     fn new() -> Result<Self> {
         enable_raw_mode()?;
-        // Immediately guard raw mode so any subsequent failure restores it.
+        // Guard raw mode immediately; dropped (restoring raw mode) on any failure below.
         let raw_guard = RawModeGuard;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
+        // Guard alternate screen now that it has been entered; dropped (leaving alternate
+        // screen) if Terminal::new or any later step fails.
+        let alt_guard = AltScreenGuard;
         let backend = CrosstermBackend::new(stdout);
         let terminal = Terminal::new(backend)?;
         // All setup succeeded — TerminalGuard takes over cleanup responsibility.
         std::mem::forget(raw_guard);
+        std::mem::forget(alt_guard);
         Ok(TerminalGuard { terminal })
     }
 }
@@ -79,4 +95,69 @@ pub fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    /// Helper that appends a label to a shared log on drop, letting tests
+    /// verify cleanup ordering without involving real terminal state.
+    struct RecordingGuard {
+        log: Arc<Mutex<Vec<&'static str>>>,
+        label: &'static str,
+    }
+
+    impl Drop for RecordingGuard {
+        fn drop(&mut self) {
+            self.log.lock().unwrap().push(self.label);
+        }
+    }
+
+    /// Verifies the two-guard setup pattern: when a simulated setup failure
+    /// occurs after both guards are active, they are cleaned up in reverse
+    /// declaration order (alt-screen first, then raw-mode).
+    #[test]
+    fn setup_guards_clean_up_in_reverse_order_on_failure() {
+        let log: Arc<Mutex<Vec<&'static str>>> = Arc::new(Mutex::new(Vec::new()));
+
+        let result: Result<(), &str> = {
+            let _raw = RecordingGuard {
+                log: log.clone(),
+                label: "raw",
+            };
+            let _alt = RecordingGuard {
+                log: log.clone(),
+                label: "alt",
+            };
+            // Simulate a setup failure (e.g. Terminal::new returns Err).
+            Err("setup failed")
+        };
+
+        assert!(result.is_err());
+        // Rust drops locals in reverse declaration order: _alt then _raw.
+        assert_eq!(*log.lock().unwrap(), vec!["alt", "raw"]);
+    }
+
+    /// Verifies that when setup succeeds (both guards forgotten), no cleanup
+    /// entries are recorded — responsibility transfers to TerminalGuard.
+    #[test]
+    fn setup_guards_skipped_when_forgotten() {
+        let log: Arc<Mutex<Vec<&'static str>>> = Arc::new(Mutex::new(Vec::new()));
+
+        {
+            let raw = RecordingGuard {
+                log: log.clone(),
+                label: "raw",
+            };
+            let alt = RecordingGuard {
+                log: log.clone(),
+                label: "alt",
+            };
+            std::mem::forget(raw);
+            std::mem::forget(alt);
+        }
+
+        assert!(log.lock().unwrap().is_empty());
+    }
 }

@@ -163,7 +163,8 @@ mod tests {
 
     #[test]
     fn extract_plain_response() {
-        let raw = r#"{"short":"did things","actions":["step one","step two"],"intent_guess":"refactor"}"#;
+        let raw =
+            r#"{"short":"did things","actions":["step one","step two"],"intent_guess":"refactor"}"#;
         let (short, actions, intent) = extract_summary_fields(raw).unwrap();
         assert_eq!(short, "did things");
         assert_eq!(actions, vec!["step one", "step two"]);
