@@ -32,17 +32,19 @@ Set Framerate 18
 Set TypingSpeed 60ms
 
 Hide
-Type "export PS1='flightrec $ '"
+Type "export PS1='demo $ '"
 Enter
 Type "export PATH=/Users/zakelfassi/Documents/Code/agentscope/target/release:$PATH"
 Enter
 Type "export FLIGHTREC_HOME=$(mktemp -d)"
 Enter
-Type "cd /Users/zakelfassi/Documents/Code/agentscope"
+Type "rm -rf /tmp/flightrec-demo && mkdir -p /tmp/flightrec-demo"
 Enter
-Type "echo '# agent session log' > DEMO_NOTES.md"
+Type "echo '# agent session notes' > /tmp/flightrec-demo/NOTES.md"
 Enter
 Sleep 100ms
+Type "cd /tmp/flightrec-demo"
+Enter
 Type "flightrec init --root ."
 Enter
 Sleep 600ms
@@ -57,7 +59,7 @@ Enter
 Sleep 3000ms
 
 Sleep 500ms
-Type "echo '## agent made changes here' >> DEMO_NOTES.md"
+Type "echo '## agent made changes here' >> /tmp/flightrec-demo/NOTES.md"
 Enter
 Sleep 800ms
 
@@ -71,7 +73,7 @@ Enter
 Sleep 2500ms
 
 Hide
-Type "rm -f DEMO_NOTES.md"
+Type "rm -rf /tmp/flightrec-demo"
 Enter
 Sleep 200ms
 Show
