@@ -86,6 +86,15 @@ impl Default for Config {
     }
 }
 
+pub fn save_config(config: &Config, path: &std::path::Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let content = toml::to_string_pretty(config)?;
+    std::fs::write(path, content)?;
+    Ok(())
+}
+
 pub fn load_config() -> Result<Config> {
     let config_path = crate::storage::flightrec_home().join("config.toml");
     let mut config = if config_path.exists() {

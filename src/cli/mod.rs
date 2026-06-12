@@ -1,10 +1,12 @@
 mod diff;
+mod init;
 mod replay;
 mod report;
 mod watch;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 use crate::{config, storage};
 
@@ -51,23 +53,38 @@ enum Commands {
         #[arg(long, default_value = "md")]
         format: String,
     },
+    /// Write a starter config.toml in FLIGHTREC_HOME
+    Init {
+        /// Overwrite an existing config
+        #[arg(long)]
+        force: bool,
+        /// Watch root path (repeatable; defaults to canonicalized CWD)
+        #[arg(long, value_name = "PATH")]
+        root: Vec<PathBuf>,
+    },
 }
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
-    let cfg = config::load_config()?;
-    storage::init_storage()?;
 
     match cli.command {
-        Commands::Watch { once, interval } => watch::run(once, interval, &cfg)?,
-        Commands::Diff {
-            snap_a,
-            snap_b,
-            json,
-        } => diff::run(snap_a, snap_b, json)?,
-        Commands::Replay { path, since } => replay::run(path, since)?,
-        Commands::Report { diff_id, format } => report::run(diff_id, format)?,
+        // init handles its own config/storage setup
+        Commands::Init { force, root } => init::run(force, root),
+        cmd => {
+            let cfg = config::load_config()?;
+            storage::init_storage()?;
+            match cmd {
+                Commands::Watch { once, interval } => watch::run(once, interval, &cfg)?,
+                Commands::Diff {
+                    snap_a,
+                    snap_b,
+                    json,
+                } => diff::run(snap_a, snap_b, json)?,
+                Commands::Replay { path, since } => replay::run(path, since)?,
+                Commands::Report { diff_id, format } => report::run(diff_id, format)?,
+                Commands::Init { .. } => unreachable!(),
+            }
+            Ok(())
+        }
     }
-
-    Ok(())
 }
