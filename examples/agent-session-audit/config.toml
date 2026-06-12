@@ -1,0 +1,30 @@
+[watch]
+roots = [
+    "~/projects/my-app",
+    "~/projects/agent-config",
+]
+
+[filter]
+include = [
+    "**/*.md",
+    "**/*.toml",
+    "**/*.json",
+]
+exclude = [
+    "**/.git/**",
+    "**/target/**",
+    "**/node_modules/**",
+    "**/*.log",
+]
+
+[daemon]
+interval_seconds = 10
+
+[llm]
+enabled = false
+provider = "anthropic"
+model = "claude-haiku-4-5"
+max_changes_per_prompt = 30
+
+[output]
+json_log_dir = "~/.flightrec/logs"

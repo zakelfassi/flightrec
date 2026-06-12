@@ -1,0 +1,36 @@
+[watch]
+roots = [
+    "~/projects/my-app",
+]
+
+[filter]
+include = [
+    "**/*.md",
+    "**/*.rs",
+    "**/*.toml",
+    "**/*.json",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.py",
+    "**/*.ts",
+    "**/*.js",
+]
+exclude = [
+    "**/.git/**",
+    "**/target/**",
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/*.log",
+]
+
+[daemon]
+interval_seconds = 30
+
+[llm]
+enabled = false
+provider = "anthropic"
+model = "claude-haiku-4-5"
+max_changes_per_prompt = 30
+
+[output]
+json_log_dir = "~/.flightrec/logs"
