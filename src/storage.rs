@@ -5,6 +5,26 @@ use crate::diff::DiffEvent;
 use crate::snapshot::SnapshotManifest;
 use crate::utils::expand_tilde;
 
+/// Resolve the flightrec home directory.
+///
+/// Priority: `FLIGHTREC_HOME` env var → `~/.flightrec`.
+/// The `env_override` parameter allows tests to inject a value directly
+/// without touching the process environment.
+pub fn resolve_home(env_override: Option<&str>) -> PathBuf {
+    if let Some(home) = env_override {
+        return PathBuf::from(home);
+    }
+    if let Ok(home) = std::env::var("FLIGHTREC_HOME") {
+        return PathBuf::from(home);
+    }
+    expand_tilde("~/.flightrec")
+}
+
+/// Return the active flightrec home directory (respects `FLIGHTREC_HOME`).
+pub fn flightrec_home() -> PathBuf {
+    resolve_home(None)
+}
+
 pub struct StoragePaths {
     pub base: PathBuf,
     pub snapshots: PathBuf,
@@ -14,7 +34,7 @@ pub struct StoragePaths {
 
 impl StoragePaths {
     pub fn new() -> Self {
-        let base = expand_tilde("~/.flightrec");
+        let base = flightrec_home();
         StoragePaths {
             snapshots: base.join("snapshots"),
             diffs: base.join("diffs"),
@@ -106,4 +126,44 @@ pub fn list_diffs() -> Result<Vec<String>> {
     }
     ids.sort();
     Ok(ids)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_home_uses_override() {
+        let p = resolve_home(Some("/tmp/custom_home"));
+        assert_eq!(p, PathBuf::from("/tmp/custom_home"));
+    }
+
+    #[test]
+    fn resolve_home_passthrough_tilde_literal() {
+        // An explicit override is returned verbatim (no tilde expansion).
+        let p = resolve_home(Some("~/.flightrec"));
+        assert_eq!(p, PathBuf::from("~/.flightrec"));
+    }
+
+    #[test]
+    fn resolve_home_override_wins() {
+        // The explicit override parameter always takes priority over env.
+        let p = resolve_home(Some("/override/wins"));
+        assert_eq!(p, PathBuf::from("/override/wins"));
+    }
+
+    #[test]
+    fn storage_paths_subdirs_under_base() {
+        let base = "/tmp/test_flightrec_storage";
+        let home = resolve_home(Some(base));
+        assert_eq!(
+            home.join("snapshots"),
+            PathBuf::from(format!("{}/snapshots", base))
+        );
+        assert_eq!(home.join("diffs"), PathBuf::from(format!("{}/diffs", base)));
+        assert_eq!(
+            home.join("objects"),
+            PathBuf::from(format!("{}/objects", base))
+        );
+    }
 }

@@ -87,7 +87,7 @@ impl Default for Config {
 }
 
 pub fn load_config() -> Result<Config> {
-    let config_path = expand_tilde("~/.flightrec/config.toml");
+    let config_path = crate::storage::flightrec_home().join("config.toml");
     let mut config = if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
         toml::from_str(&content)?
