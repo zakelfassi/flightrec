@@ -34,7 +34,7 @@ Set TypingSpeed 60ms
 Hide
 Type "export PS1='demo $ '"
 Enter
-Type "export PATH=/Users/zakelfassi/Documents/Code/agentscope/target/release:$PATH"
+Type "export PATH=$(pwd)/target/release:$PATH"
 Enter
 Type "export FLIGHTREC_HOME=$(mktemp -d)"
 Enter
