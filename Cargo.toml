@@ -1,9 +1,15 @@
 [package]
 name = "agentscope"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Git-like observability for AI agents"
-license = "MIT"
+description = "Git-like filesystem observability for AI agents"
+license = "Apache-2.0"
+repository = "https://github.com/zakelfassi/flightrec"
+homepage = "https://zakelfassi.github.io/flightrec"
+readme = "README.md"
+keywords = ["observability", "ai-agents", "snapshot", "diff", "filesystem"]
+categories = ["command-line-utilities", "development-tools", "filesystem"]
+exclude = ["landing/", "skills/", "assets/", "tests/fixtures/", ".github/"]
 
 [lib]
 name = "agentscope"
