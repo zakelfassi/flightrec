@@ -5,4 +5,5 @@ pub mod diff;
 pub mod llm;
 pub mod snapshot;
 pub mod storage;
+pub mod tui;
 pub mod utils;

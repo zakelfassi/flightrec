@@ -2,6 +2,7 @@ mod diff;
 mod init;
 mod replay;
 mod report;
+mod tui;
 mod watch;
 
 use anyhow::Result;
@@ -16,7 +17,7 @@ use crate::{config, storage};
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -65,14 +66,24 @@ enum Commands {
         #[arg(long, value_name = "PATH")]
         root: Vec<PathBuf>,
     },
+    /// Open the interactive TUI (timeline → diff detail → file diff)
+    Tui,
 }
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
+    // No subcommand → launch the TUI (default experience).
+    let cmd = match cli.command {
+        Some(c) => c,
+        None => Commands::Tui,
+    };
+
+    match cmd {
         // init handles its own config/storage setup
         Commands::Init { force, root } => init::run(force, root),
+        // TUI does its own terminal setup; skip storage init.
+        Commands::Tui => tui::run(),
         cmd => {
             let cfg = config::load_config()?;
             storage::init_storage()?;
@@ -89,7 +100,7 @@ pub fn run() -> Result<()> {
                 } => diff::run(snap_a, snap_b, json)?,
                 Commands::Replay { path, since } => replay::run(path, since)?,
                 Commands::Report { diff_id, format } => report::run(diff_id, format)?,
-                Commands::Init { .. } => unreachable!(),
+                Commands::Init { .. } | Commands::Tui => unreachable!(),
             }
             Ok(())
         }
