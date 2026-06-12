@@ -76,26 +76,46 @@ fn parse_json_output(raw: &str) -> Result<serde_json::Value, LlmError> {
         .map_err(|e| LlmError::BadOutput(format!("JSON parse error: {e}")))
 }
 
-/// Call the LLM and parse the response into a `DiffSummary`.
-pub fn summarize_diff(event: &DiffEvent, cfg: &LlmConfig) -> Result<DiffSummary, LlmError> {
-    let provider = provider_from_config(cfg)?;
-    let (system, user) = prompt::render(event, cfg.max_changes_per_prompt);
-    let raw = provider.complete(&cfg.model, &system, &user)?;
-    let json = parse_json_output(&raw)?;
+/// Strip optional code fences, parse JSON, and extract the `(short, actions,
+/// intent_guess)` triple that every valid LLM response must contain.
+///
+/// Returns `LlmError::BadOutput` if:
+/// - the JSON cannot be parsed,
+/// - `"short"` is missing or non-string,
+/// - `"actions"` is missing or non-array,
+/// - **any** entry in `"actions"` is not a string.
+fn extract_summary_fields(raw: &str) -> Result<(String, Vec<String>, Option<String>), LlmError> {
+    let json = parse_json_output(raw)?;
 
     let short = json["short"]
         .as_str()
         .ok_or_else(|| LlmError::BadOutput("missing 'short' field".to_string()))?
         .to_string();
 
-    let actions = json["actions"]
+    let actions_arr = json["actions"]
         .as_array()
-        .ok_or_else(|| LlmError::BadOutput("missing 'actions' array".to_string()))?
+        .ok_or_else(|| LlmError::BadOutput("missing 'actions' array".to_string()))?;
+
+    let actions: Vec<String> = actions_arr
         .iter()
-        .filter_map(|v| v.as_str().map(|s| s.to_string()))
-        .collect();
+        .map(|v| {
+            v.as_str()
+                .map(|s| s.to_string())
+                .ok_or_else(|| LlmError::BadOutput(format!("non-string action entry: {v}")))
+        })
+        .collect::<Result<_, LlmError>>()?;
 
     let intent_guess = json["intent_guess"].as_str().map(|s| s.to_string());
+
+    Ok((short, actions, intent_guess))
+}
+
+/// Call the LLM and parse the response into a `DiffSummary`.
+pub fn summarize_diff(event: &DiffEvent, cfg: &LlmConfig) -> Result<DiffSummary, LlmError> {
+    let provider = provider_from_config(cfg)?;
+    let (system, user) = prompt::render(event, cfg.max_changes_per_prompt);
+    let raw = provider.complete(&cfg.model, &system, &user)?;
+    let (short, actions, intent_guess) = extract_summary_fields(&raw)?;
 
     Ok(DiffSummary {
         llm_provider: provider.name().to_string(),
@@ -136,6 +156,59 @@ mod tests {
     #[test]
     fn malformed_json_is_bad_output() {
         let err = parse_json_output("not json at all").unwrap_err();
+        assert!(matches!(err, LlmError::BadOutput(_)));
+    }
+
+    // ── extract_summary_fields (production parser) ───────────────────────────
+
+    #[test]
+    fn extract_plain_response() {
+        let raw = r#"{"short":"did things","actions":["step one","step two"],"intent_guess":"refactor"}"#;
+        let (short, actions, intent) = extract_summary_fields(raw).unwrap();
+        assert_eq!(short, "did things");
+        assert_eq!(actions, vec!["step one", "step two"]);
+        assert_eq!(intent.as_deref(), Some("refactor"));
+    }
+
+    #[test]
+    fn extract_fenced_response() {
+        let raw =
+            "```json\n{\"short\":\"ok\",\"actions\":[\"a\",\"b\"],\"intent_guess\":\"x\"}\n```";
+        let (short, actions, intent) = extract_summary_fields(raw).unwrap();
+        assert_eq!(short, "ok");
+        assert_eq!(actions, vec!["a", "b"]);
+        assert_eq!(intent.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn non_string_action_entry_is_bad_output() {
+        // Any numeric or object entry in `actions` must be rejected, not silently dropped.
+        let raw = r#"{"short":"x","actions":[42],"intent_guess":null}"#;
+        let err = extract_summary_fields(raw).unwrap_err();
+        assert!(
+            matches!(err, LlmError::BadOutput(_)),
+            "expected BadOutput, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn mixed_action_types_is_bad_output() {
+        let raw = r#"{"short":"x","actions":["valid",{"nested":"obj"}],"intent_guess":null}"#;
+        let err = extract_summary_fields(raw).unwrap_err();
+        assert!(matches!(err, LlmError::BadOutput(_)));
+    }
+
+    #[test]
+    fn missing_short_field_is_bad_output() {
+        let raw = r#"{"actions":["a"],"intent_guess":null}"#;
+        let err = extract_summary_fields(raw).unwrap_err();
+        assert!(matches!(err, LlmError::BadOutput(_)));
+    }
+
+    #[test]
+    fn missing_actions_field_is_bad_output() {
+        let raw = r#"{"short":"x","intent_guess":null}"#;
+        let err = extract_summary_fields(raw).unwrap_err();
         assert!(matches!(err, LlmError::BadOutput(_)));
     }
 }

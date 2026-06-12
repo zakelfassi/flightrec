@@ -13,6 +13,17 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io::{self, Stdout};
 use std::panic;
 
+/// Minimal RAII guard that disables raw mode on drop.
+/// Used during `TerminalGuard` construction to ensure raw mode is restored
+/// if any later setup step (alternate screen, terminal init) fails.
+struct RawModeGuard;
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+    }
+}
+
 /// RAII guard that restores the terminal on drop (including panics).
 struct TerminalGuard {
     terminal: Terminal<CrosstermBackend<Stdout>>,
@@ -21,10 +32,14 @@ struct TerminalGuard {
 impl TerminalGuard {
     fn new() -> Result<Self> {
         enable_raw_mode()?;
+        // Immediately guard raw mode so any subsequent failure restores it.
+        let raw_guard = RawModeGuard;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let terminal = Terminal::new(backend)?;
+        // All setup succeeded — TerminalGuard takes over cleanup responsibility.
+        std::mem::forget(raw_guard);
         Ok(TerminalGuard { terminal })
     }
 }

@@ -46,6 +46,19 @@ fn change_color(ct: &ChangeType) -> Color {
     }
 }
 
+/// Truncate a diff_id for compact display. Strips a leading `diff-` prefix
+/// (if present) and keeps at most 15 characters of the remainder, appending
+/// `…` when the remainder is longer.
+fn short_diff_id(id: &str) -> String {
+    const MAX: usize = 15;
+    let body = id.strip_prefix("diff-").unwrap_or(id);
+    if body.len() <= MAX {
+        body.to_string()
+    } else {
+        format!("{}…", &body[..MAX])
+    }
+}
+
 // ── Timeline ─────────────────────────────────────────────────────────────────
 
 fn render_timeline(f: &mut Frame, app: &App) {
@@ -68,16 +81,31 @@ fn render_timeline(f: &mut Frame, app: &App) {
             .iter()
             .map(|entry| {
                 let count_str = format!("{} change(s)", entry.change_count);
+                let id_str = short_diff_id(&entry.diff_id);
                 let short = entry.short_summary.as_deref().unwrap_or("").to_string();
 
                 let main_line = if short.is_empty() {
                     Line::from(vec![
+                        Span::styled(
+                            id_str,
+                            Style::default()
+                                .fg(Color::Magenta)
+                                .add_modifier(Modifier::DIM),
+                        ),
+                        Span::raw("  "),
                         Span::styled(entry.created_at.clone(), Style::default().fg(Color::Cyan)),
                         Span::raw("  "),
                         Span::raw(count_str),
                     ])
                 } else {
                     Line::from(vec![
+                        Span::styled(
+                            id_str,
+                            Style::default()
+                                .fg(Color::Magenta)
+                                .add_modifier(Modifier::DIM),
+                        ),
+                        Span::raw("  "),
                         Span::styled(entry.created_at.clone(), Style::default().fg(Color::Cyan)),
                         Span::raw("  "),
                         Span::raw(count_str),

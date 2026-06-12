@@ -66,8 +66,9 @@ fn hash_and_store(path: &Path, size: u64, store: Option<&BlobStore>) -> Result<S
         hasher.update(&content);
         let hash = format!("{:x}", hasher.finalize());
         if let Some(bs) = store {
-            // Ignore individual blob write failures; snapshot still succeeds.
-            let _ = bs.write(&hash, &content);
+            if let Err(e) = bs.write(&hash, &content) {
+                eprintln!("flightrec: warning: blob write failed for {hash}: {e}");
+            }
         }
         Ok(hash)
     } else {
