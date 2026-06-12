@@ -59,6 +59,8 @@ impl Default for Config {
             filter: FilterConfig {
                 include: vec![
                     "**/*.md".to_string(),
+                    "**/*.txt".to_string(),
+                    "**/*.sh".to_string(),
                     "**/*.rs".to_string(),
                     "**/*.toml".to_string(),
                     "**/*.json".to_string(),
@@ -128,4 +130,23 @@ pub fn load_config() -> Result<Config> {
         })
         .collect();
     Ok(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_includes_txt_and_sh() {
+        let config = Config::default();
+        let includes = &config.filter.include;
+        assert!(
+            includes.contains(&"**/*.txt".to_string()),
+            "default include globs must contain **/*.txt; got: {includes:?}"
+        );
+        assert!(
+            includes.contains(&"**/*.sh".to_string()),
+            "default include globs must contain **/*.sh; got: {includes:?}"
+        );
+    }
 }
