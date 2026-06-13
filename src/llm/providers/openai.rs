@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use reqwest::blocking::Client;
 use serde_json::json;
 
@@ -5,6 +7,10 @@ use crate::llm::{LlmError, LlmProvider};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_API_KEY_ENV: &str = "OPENAI_API_KEY";
+
+/// Request timeout for provider HTTP calls. A stalled-but-connected endpoint
+/// must not hang `watch` indefinitely (the LLM layer is non-fatal by contract).
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct OpenAiProvider {
     client: Client,
@@ -27,8 +33,12 @@ impl OpenAiProvider {
             .unwrap_or(DEFAULT_BASE_URL)
             .trim_end_matches('/')
             .to_string();
+        let client = Client::builder()
+            .timeout(REQUEST_TIMEOUT)
+            .build()
+            .map_err(LlmError::Http)?;
         Ok(Self {
-            client: Client::new(),
+            client,
             api_key,
             base_url,
             provider_name: provider_name.to_string(),

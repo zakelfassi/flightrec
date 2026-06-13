@@ -59,7 +59,7 @@ pub fn provider_from_config(cfg: &LlmConfig) -> Result<Box<dyn LlmProvider>, Llm
         }
         "ollama" => Ok(Box::new(providers::ollama::OllamaProvider::new(
             cfg.base_url.as_deref(),
-        ))),
+        )?)),
         other => Err(LlmError::UnknownProvider(other.to_string())),
     }
 }
