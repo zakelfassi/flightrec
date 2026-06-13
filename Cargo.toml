@@ -10,7 +10,7 @@ homepage = "https://zakelfassi.github.io/flightrec"
 readme = "README.md"
 keywords = ["observability", "ai-agents", "snapshot", "diff", "filesystem"]
 categories = ["command-line-utilities", "development-tools", "filesystem"]
-exclude = ["landing/", "skills/", "assets/", "tests/fixtures/", ".github/"]
+exclude = ["landing/", "skills/", "assets/", ".github/"]
 
 [lib]
 name = "flightrec"
