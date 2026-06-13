@@ -26,6 +26,17 @@ pub struct ChangeRecord {
     pub renamed_from: Option<String>,
 }
 
+/// Narrative summary produced by an LLM provider.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DiffSummary {
+    pub llm_provider: String,
+    pub model: String,
+    pub generated_at: String,
+    pub short: String,
+    pub actions: Vec<String>,
+    pub intent_guess: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DiffEvent {
     pub diff_id: String,
@@ -33,6 +44,8 @@ pub struct DiffEvent {
     pub to_snapshot_id: String,
     pub created_at: String,
     pub changes: Vec<ChangeRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<DiffSummary>,
 }
 
 pub fn compute_diff(old: &SnapshotManifest, new: &SnapshotManifest) -> DiffEvent {
@@ -138,19 +151,40 @@ pub fn compute_diff(old: &SnapshotManifest, new: &SnapshotManifest) -> DiffEvent
         to_snapshot_id: new.snapshot_id.clone(),
         created_at: now_iso(),
         changes,
+        summary: None,
     }
 }
 
-pub fn text_diff(old: &str, new: &str) -> String {
-    use similar::{ChangeTag, TextDiff};
-    let diff = TextDiff::from_lines(old, new);
-    let mut out = String::new();
-    for change in diff.iter_all_changes() {
-        match change.tag() {
-            ChangeTag::Delete => out.push_str(&format!("-{}", change)),
-            ChangeTag::Insert => out.push_str(&format!("+{}", change)),
-            ChangeTag::Equal => {}
+/// Produce a unified diff of `old` vs `new` with 3 context lines.
+pub fn unified_diff(old: &str, new: &str) -> String {
+    similar::TextDiff::from_lines(old, new)
+        .unified_diff()
+        .context_radius(3)
+        .header("original", "modified")
+        .to_string()
+}
+
+/// Fill `diff_text` for each modified-text change in `event` by reading both
+/// blobs from `store` and running [`unified_diff`].
+///
+/// Falls back to the existing size-only string when either blob is missing
+/// (graceful degradation for pre-0.2 snapshots that have no blob store).
+pub fn enrich_with_diffs(event: &mut DiffEvent, store: &crate::blobstore::BlobStore) {
+    for change in &mut event.changes {
+        if change.change_type != ChangeType::Modified {
+            continue;
+        }
+        let (Some(old_hash), Some(new_hash)) = (&change.old_hash, &change.new_hash) else {
+            continue;
+        };
+        // Only enrich when both blobs are readable as UTF-8 text.
+        match (store.read_string(old_hash), store.read_string(new_hash)) {
+            (Ok(old_text), Ok(new_text)) => {
+                change.diff_text = Some(unified_diff(&old_text, &new_text));
+            }
+            _ => {
+                // Either blob is missing or binary — keep the size-only fallback.
+            }
         }
     }
-    out
 }

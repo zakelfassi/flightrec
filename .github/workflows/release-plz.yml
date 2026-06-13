@@ -1,0 +1,28 @@
+name: Release-plz
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release-plz:
+    name: Release-plz
+    runs-on: ubuntu-latest
+    # RELEASE_PLZ_TOKEN must be a GitHub PAT with repo permissions.
+    # A PAT (rather than GITHUB_TOKEN) is required so that the tag pushed by
+    # release-plz triggers the cargo-dist release workflow.
+    # Create the secret at Settings → Secrets and variables → Actions.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: release-plz/action@v0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

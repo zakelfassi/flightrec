@@ -19,11 +19,21 @@ pub struct DaemonConfig {
     pub interval_seconds: u64,
 }
 
+fn default_max_changes() -> usize {
+    30
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LlmConfig {
     pub enabled: bool,
     pub provider: String,
     pub model: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    #[serde(default = "default_max_changes")]
+    pub max_changes_per_prompt: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -44,15 +54,13 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             watch: WatchConfig {
-                roots: vec![
-                    "~/.openclaw".to_string(),
-                    "~/clawd".to_string(),
-                    "~/tac-monorepo".to_string(),
-                ],
+                roots: vec![".".to_string()],
             },
             filter: FilterConfig {
                 include: vec![
                     "**/*.md".to_string(),
+                    "**/*.txt".to_string(),
+                    "**/*.sh".to_string(),
                     "**/*.rs".to_string(),
                     "**/*.toml".to_string(),
                     "**/*.json".to_string(),
@@ -73,6 +81,9 @@ impl Default for Config {
                     "**/.cache/**".to_string(),
                     "**/.next/**".to_string(),
                     "**/target/**".to_string(),
+                    // flightrec's own storage home — never snapshot our own
+                    // config/snapshots/diffs as if they were user changes.
+                    "**/.flightrec/**".to_string(),
                 ],
             },
             daemon: DaemonConfig {
@@ -82,21 +93,63 @@ impl Default for Config {
                 enabled: false,
                 provider: "anthropic".to_string(),
                 model: "claude-haiku-4-5".to_string(),
+                base_url: None,
+                api_key_env: None,
+                max_changes_per_prompt: 30,
             },
             output: OutputConfig {
-                json_log_dir: "~/.agentscope/logs".to_string(),
+                json_log_dir: "~/.flightrec/logs".to_string(),
             },
         }
     }
 }
 
+pub fn save_config(config: &Config, path: &std::path::Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let content = toml::to_string_pretty(config)?;
+    std::fs::write(path, content)?;
+    Ok(())
+}
+
 pub fn load_config() -> Result<Config> {
-    let config_path = expand_tilde("~/.agentscope/config.toml");
-    if config_path.exists() {
+    let config_path = crate::storage::flightrec_home().join("config.toml");
+    let mut config = if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
-        let config: Config = toml::from_str(&content)?;
-        Ok(config)
+        toml::from_str(&content)?
     } else {
-        Ok(Config::default())
+        Config::default()
+    };
+    config.watch.roots = config
+        .watch
+        .roots
+        .into_iter()
+        .map(|r| {
+            let expanded = expand_tilde(&r);
+            std::fs::canonicalize(&expanded)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| expanded.to_string_lossy().into_owned())
+        })
+        .collect();
+    Ok(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_includes_txt_and_sh() {
+        let config = Config::default();
+        let includes = &config.filter.include;
+        assert!(
+            includes.contains(&"**/*.txt".to_string()),
+            "default include globs must contain **/*.txt; got: {includes:?}"
+        );
+        assert!(
+            includes.contains(&"**/*.sh".to_string()),
+            "default include globs must contain **/*.sh; got: {includes:?}"
+        );
     }
 }

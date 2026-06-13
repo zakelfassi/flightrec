@@ -6,6 +6,7 @@ use std::io::Read;
 use std::path::Path;
 use walkdir::WalkDir;
 
+use crate::blobstore::{BlobStore, BLOB_SIZE_CAP};
 use crate::utils::{expand_tilde, now_iso};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -56,6 +57,25 @@ fn hash_file(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Hash a file and, when a `BlobStore` is provided and the file is ≤ 10 MiB,
+/// write the content into the store. Returns the hex SHA-256 hash.
+fn hash_and_store(path: &Path, size: u64, store: Option<&BlobStore>) -> Result<String> {
+    if size <= BLOB_SIZE_CAP {
+        let content = std::fs::read(path)?;
+        let mut hasher = Sha256::new();
+        hasher.update(&content);
+        let hash = format!("{:x}", hasher.finalize());
+        if let Some(bs) = store {
+            if let Err(e) = bs.write(&hash, &content) {
+                eprintln!("flightrec: warning: blob write failed for {hash}: {e}");
+            }
+        }
+        Ok(hash)
+    } else {
+        hash_file(path)
+    }
+}
+
 fn snapshot_id_now() -> String {
     let now = chrono::Utc::now();
     let subsec = now.timestamp_subsec_millis();
@@ -66,10 +86,18 @@ pub fn take_snapshot(
     roots: &[String],
     include: &[String],
     exclude: &[String],
+    blob_store: Option<&BlobStore>,
 ) -> Result<SnapshotManifest> {
     let include_set = build_globset(include)?;
     let exclude_set = build_globset(exclude)?;
     let mut files = Vec::new();
+
+    // Always skip flightrec's own storage home, wherever it lives. The default
+    // `**/.flightrec/**` exclude only catches the default location; this guards
+    // against a relocated `FLIGHTREC_HOME` whose artifacts would otherwise be
+    // recorded as user changes (self-generated timeline noise).
+    let storage_home = std::fs::canonicalize(crate::storage::flightrec_home())
+        .unwrap_or_else(|_| crate::storage::flightrec_home());
 
     for root_str in roots {
         let root_path = expand_tilde(root_str);
@@ -83,6 +111,10 @@ pub fn take_snapshot(
         {
             let path = entry.path();
             if !path.is_file() {
+                continue;
+            }
+
+            if path.starts_with(&storage_home) {
                 continue;
             }
 
@@ -100,7 +132,8 @@ pub fn take_snapshot(
                 Ok(m) => m,
                 Err(_) => continue,
             };
-            let blob_hash = match hash_file(path) {
+            let size = metadata.len();
+            let blob_hash = match hash_and_store(path, size, blob_store) {
                 Ok(h) => h,
                 Err(_) => continue,
             };
@@ -108,7 +141,7 @@ pub fn take_snapshot(
 
             files.push(FileEntry {
                 path: path.to_string_lossy().to_string(),
-                size: metadata.len(),
+                size,
                 blob_hash,
                 is_text,
             });
