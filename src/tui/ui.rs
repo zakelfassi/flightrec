@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use super::app::{App, Screen};
+use super::theme;
 use crate::diff::ChangeType;
 
 const HELP_TIMELINE: &str = " j/k ↑/↓ navigate  Enter open  r refresh  g/G top/bottom  q quit";
@@ -39,10 +40,10 @@ fn split_body_help(area: Rect) -> (Rect, Rect) {
 
 fn change_color(ct: &ChangeType) -> Color {
     match ct {
-        ChangeType::Added => Color::Green,
-        ChangeType::Removed => Color::Red,
-        ChangeType::Modified => Color::Yellow,
-        ChangeType::Renamed => Color::Gray,
+        ChangeType::Added => theme::ADDED,
+        ChangeType::Removed => theme::REMOVED,
+        ChangeType::Modified => theme::MODIFIED,
+        ChangeType::Renamed => theme::RENAMED,
     }
 }
 
@@ -241,11 +242,11 @@ fn render_file(f: &mut Frame, app: &App) {
 
 fn colorize_diff_line(line: &str) -> Line<'static> {
     let (style, text) = if line.starts_with('+') && !line.starts_with("+++") {
-        (Style::default().fg(Color::Green), line.to_string())
+        (Style::default().fg(theme::ADDED), line.to_string())
     } else if line.starts_with('-') && !line.starts_with("---") {
-        (Style::default().fg(Color::Red), line.to_string())
+        (Style::default().fg(theme::REMOVED), line.to_string())
     } else if line.starts_with("@@") {
-        (Style::default().fg(Color::Yellow), line.to_string())
+        (Style::default().fg(theme::MODIFIED), line.to_string())
     } else {
         (Style::default(), line.to_string())
     };

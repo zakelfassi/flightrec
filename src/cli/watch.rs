@@ -53,8 +53,12 @@ pub fn run(once: bool, interval: Option<u64>, no_llm: bool, cfg: &Config) -> Res
                 storage::save_diff(&event)?;
                 println!("  {} changes:", event.changes.len());
                 for c in &event.changes {
-                    // Signal colors: added=green(32), removed=red(31),
-                    // modified=yellow/amber(33), renamed=dim(2).
+                    // ANSI escape codes are kept here for broad terminal
+                    // compatibility (watch output streams to non-TUI stdout).
+                    // The semantic mapping mirrors the design-system signal
+                    // colors in src/tui/theme.rs: added=#1A9E55 (green/32),
+                    // removed=#D43B3B (red/31), modified=#C7860A (amber/33),
+                    // renamed=neutral (dim/2).
                     let (sym, ansi) = match c.change_type {
                         diff::ChangeType::Added => ("+", "32"),
                         diff::ChangeType::Removed => ("-", "31"),
