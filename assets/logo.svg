@@ -1,8 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-  <rect x="16" y="16" width="96" height="96" fill="none" stroke="#111110" stroke-width="1"/>
-  <line x1="35.5" y1="73.6" x2="43.5" y2="73.6" stroke="#111110" stroke-width="1"/>
-<rect x="43.5" y="37.599999999999994" width="5" height="36" fill="#1A9E55"/>
-<rect x="60.5" y="37.599999999999994" width="5" height="36" fill="#C7860A"/>
-<rect x="77.5" y="37.599999999999994" width="5" height="36" fill="#D43B3B"/>
-<line x1="84.5" y1="73.6" x2="92.5" y2="73.6" stroke="#111110" stroke-width="1"/>
+  <!-- hairline plate border -->
+  <path d="M16 16H112V112H16Z" fill="none" stroke="#111110" stroke-width="1"/>
+  <!-- left connector -->
+  <path d="M35.5 73.6H43.5" fill="none" stroke="#111110" stroke-width="1"/>
+  <!-- signal tick: green -->
+  <path d="M43.5 37.6H48.5V73.6H43.5Z" fill="#1A9E55"/>
+  <!-- signal tick: amber -->
+  <path d="M60.5 37.6H65.5V73.6H60.5Z" fill="#C7860A"/>
+  <!-- signal tick: red -->
+  <path d="M77.5 37.6H82.5V73.6H77.5Z" fill="#D43B3B"/>
+  <!-- right connector -->
+  <path d="M84.5 73.6H92.5" fill="none" stroke="#111110" stroke-width="1"/>
 </svg>
