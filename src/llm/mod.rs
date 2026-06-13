@@ -38,6 +38,7 @@ pub fn provider_from_config(cfg: &LlmConfig) -> Result<Box<dyn LlmProvider>, Llm
         "anthropic" => {
             let key_env = cfg.api_key_env.as_deref().unwrap_or("ANTHROPIC_API_KEY");
             Ok(Box::new(providers::anthropic::AnthropicProvider::new(
+                cfg.base_url.as_deref(),
                 key_env,
             )?))
         }

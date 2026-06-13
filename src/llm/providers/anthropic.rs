@@ -5,7 +5,7 @@ use serde_json::json;
 
 use crate::llm::{LlmError, LlmProvider};
 
-const DEFAULT_URL: &str = "https://api.anthropic.com/v1/messages";
+const DEFAULT_BASE_URL: &str = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 /// Request timeout for provider HTTP calls. A stalled-but-connected endpoint
@@ -15,18 +15,27 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 pub struct AnthropicProvider {
     client: Client,
     api_key: String,
+    base_url: String,
 }
 
 impl AnthropicProvider {
-    pub fn new(api_key_env: &str) -> Result<Self, LlmError> {
+    pub fn new(base_url: Option<&str>, api_key_env: &str) -> Result<Self, LlmError> {
         let api_key = std::env::var(api_key_env).map_err(|_| LlmError::MissingApiKey {
             env_var: api_key_env.to_string(),
         })?;
+        let base_url = base_url
+            .unwrap_or(DEFAULT_BASE_URL)
+            .trim_end_matches('/')
+            .to_string();
         let client = Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .build()
             .map_err(LlmError::Http)?;
-        Ok(Self { client, api_key })
+        Ok(Self {
+            client,
+            api_key,
+            base_url,
+        })
     }
 }
 
@@ -43,9 +52,10 @@ impl LlmProvider for AnthropicProvider {
             "messages": [{"role": "user", "content": user}]
         });
 
+        let url = format!("{}/messages", self.base_url);
         let resp = self
             .client
-            .post(DEFAULT_URL)
+            .post(&url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", ANTHROPIC_VERSION)
             .header("content-type", "application/json")
