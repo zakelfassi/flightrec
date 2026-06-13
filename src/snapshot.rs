@@ -92,6 +92,13 @@ pub fn take_snapshot(
     let exclude_set = build_globset(exclude)?;
     let mut files = Vec::new();
 
+    // Always skip flightrec's own storage home, wherever it lives. The default
+    // `**/.flightrec/**` exclude only catches the default location; this guards
+    // against a relocated `FLIGHTREC_HOME` whose artifacts would otherwise be
+    // recorded as user changes (self-generated timeline noise).
+    let storage_home = std::fs::canonicalize(crate::storage::flightrec_home())
+        .unwrap_or_else(|_| crate::storage::flightrec_home());
+
     for root_str in roots {
         let root_path = expand_tilde(root_str);
         if !root_path.exists() {
@@ -104,6 +111,10 @@ pub fn take_snapshot(
         {
             let path = entry.path();
             if !path.is_file() {
+                continue;
+            }
+
+            if path.starts_with(&storage_home) {
                 continue;
             }
 

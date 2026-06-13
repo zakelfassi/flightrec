@@ -81,6 +81,9 @@ impl Default for Config {
                     "**/.cache/**".to_string(),
                     "**/.next/**".to_string(),
                     "**/target/**".to_string(),
+                    // flightrec's own storage home — never snapshot our own
+                    // config/snapshots/diffs as if they were user changes.
+                    "**/.flightrec/**".to_string(),
                 ],
             },
             daemon: DaemonConfig {
