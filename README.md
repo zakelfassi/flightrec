@@ -6,8 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://crates.io/crates/flightrec"><img src="https://img.shields.io/crates/v/flightrec?style=flat&color=1A9E55" alt="crates.io"></a>
-  <a href="https://crates.io/crates/flightrec"><img src="https://img.shields.io/crates/d/flightrec?style=flat" alt="downloads"></a>
+  <a href="https://crates.io/crates/flightrec"><img src="https://img.shields.io/github/v/release/zakelfassi/flightrec?style=flat&color=1A9E55&label=crates.io" alt="version"></a>
   <a href="https://github.com/zakelfassi/flightrec/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/zakelfassi/flightrec/ci.yml?branch=master&style=flat" alt="CI"></a>
   <a href="https://docs.rs/flightrec"><img src="https://img.shields.io/docsrs/flightrec?style=flat" alt="docs.rs"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-A3A39C.svg?style=flat" alt="Apache-2.0"></a>
