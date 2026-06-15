@@ -1,3 +1,7 @@
 [workspace]
 changelog_update = true
 git_tag_name = "v{{version}}"
+# cargo-dist owns GitHub Release creation + asset upload. Disabling here
+# prevents release-plz from pre-creating the release, which made cargo-dist's
+# `gh release create` fail with "a release with the same tag name already exists".
+git_release_enable = false
