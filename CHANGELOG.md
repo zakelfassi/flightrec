@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/zakelfassi/flightrec/compare/v0.2.0...v0.2.1) - 2026-06-15
+
+### Other
+
+- regenerate release workflow with cargo-dist
+
 ## [0.1.0] — 2026-04-01
 
 Initial public release. The project was originally developed under the name
