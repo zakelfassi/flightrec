@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/zakelfassi/flightrec/compare/v0.2.1...v0.2.2) - 2026-06-15
+
+### Fixed
+
+- *(ci)* let cargo-dist own github releases (disable release-plz release creation)
+
+### Other
+
+- use canonical Apache-2.0 text for license detection
+- fix crates badge row (use github release source, drop downloads badge)
+
 ## [0.2.1](https://github.com/zakelfassi/flightrec/compare/v0.2.0...v0.2.1) - 2026-06-15
 
 ### Other
